@@ -2,7 +2,7 @@
 #include <bitset>
 
 int main() {
-	std::cout << "DES Encryption Program" << std::endl;
+	std::cout << "DES Encryption Program Test" << std::endl;
 	system("PAUSE");
 	return 0;
 }
