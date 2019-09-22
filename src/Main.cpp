@@ -7,8 +7,10 @@
 //**************************************************************
 
 #include <iostream>
-#include <bitset>
+#include <string>
 #include <algorithm>
+#include <cassert>
+#include <unordered_map>
 
 //const variable declarations
 
@@ -48,7 +50,7 @@ const int P[32] = { 16, 7, 20, 21, 29, 12, 28, 17,
 				   19, 13, 30, 6, 22, 11, 4, 25 };
 
 //S-box Table 
-int s[8][4][16] =
+int s_box[8][4][16] =
 { {
 	14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7,
 	0,15,7,4,14,2,13,1,10,6,12,11,9,5,3,8,
@@ -100,10 +102,145 @@ int s[8][4][16] =
 	2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11
 } };
 
+
+
+const int shift_table[16] = { 1, 1, 2, 2,
+							  2, 2, 2, 2,
+							  1, 2, 2, 2,
+							  2, 2, 2, 1 };
+
+const int PC_1[56] = { 57, 49, 41, 33, 25, 17,  9,
+					    1, 58, 50, 42, 34, 26, 18,
+					   10,  2, 59, 51, 43, 35, 27,
+					   19, 11,  3, 60, 52, 44, 36,
+					   63, 55, 47, 39, 31, 23, 15,
+					    7, 62, 54, 46, 38, 30, 22,
+					   14,  6, 61, 53, 45, 37, 29,
+					   21, 13,  5, 28, 20, 12,  4 };
+
+const int PC_2[48] = { 14, 17, 11, 24,  1,  5,
+						3, 28, 15,  6, 21, 10,
+					   23, 19, 12,  4, 26,  8,
+					   16,  7, 27, 20, 13,  2,
+					   41, 52, 31, 37, 47, 55,
+					   30, 40, 51, 45, 33, 48,
+					   44, 49, 39, 56, 34, 53,
+					   46, 42, 50, 36, 29, 32
+};
+
+//use std namespace from c++ stl
+using namespace std;
+
+//Function Declarations
+string hex_to_bin(const string& hex);
+
+string bin_to_hex(const string& bin);
+
 int main() {
-	std::cout << "DES Encryption Program Test" << std::endl;
-	
+	cout << "DES Encryption Program Test" << std::endl;
+	string hex_key = "14ACE";
+	string bin_key = "0";
+	string hex_key_ = "";
+	string bin_key_ = "";
+	cout << "hex_key of length " << hex_key.length() << " : " << hex_key << endl;
+	bin_key = hex_to_bin(hex_key);
+	cout << "bin_key of length " << bin_key.length() << " : " << bin_key << endl;
 	system("PAUSE");
 	return 0;
 }
 
+string hex_to_bin(const string& hex) {
+	assert(hex.length() <= 16);
+	string bin = "";
+	string bin_with_zeros_in_front = "";
+	for (unsigned int i = 0; i < hex.length(); i++) {
+		switch (hex[i]) {
+		case '0':
+			bin.append("0000");
+			break;
+		case '1':
+			bin.append("0001");
+			break;
+		case '2': 
+			bin.append("0010");
+			break;
+		case '3':
+			bin.append("0011");
+			break;
+		case '4':
+			bin.append("0100");
+			break;
+		case '5':
+			bin.append("0101");
+			break;
+		case '6':
+			bin.append("0110");
+			break;
+		case '7':
+			bin.append("0111");
+			break;
+		case '8':
+			bin.append("1000");
+			break;
+		case '9':
+			bin.append("1001");
+			break;
+		case 'A':
+			bin.append("1010");
+			break;
+		case 'B':
+			bin.append("1011");
+			break;
+		case 'C':
+			bin.append("1100");
+			break;
+		case 'D':
+			bin.append("1101");
+			break;
+		case 'E':
+			bin.append("1110");
+			break;
+		case 'F':
+			bin.append("1111");
+			break;
+		default:
+			break;
+		}
+	}
+	int zeros_to_prepend = 64 - bin.length();
+	for (int i = 0; i < zeros_to_prepend; i++) {
+		bin.insert(0, "0");
+	}
+	return bin;
+}
+
+string bin_to_hex(const string& bin) {
+	assert(bin.length() == 64);
+	string hex = "";
+	unordered_map<string, string> mp;
+	mp["0000"] = "0";
+	mp["0001"] = "1";
+	mp["0010"] = "2";
+	mp["0011"] = "3";
+	mp["0100"] = "4";
+	mp["0101"] = "5";
+	mp["0110"] = "6";
+	mp["0111"] = "7";
+	mp["1000"] = "8";
+	mp["1001"] = "9";
+	mp["1010"] = "A";
+	mp["1011"] = "B";
+	mp["1100"] = "C";
+	mp["1101"] = "D";
+	mp["1110"] = "E";
+	mp["1111"] = "F";
+	for (int i = 0; i < bin.length(); i += 4) {
+		string ch = "";
+		ch += bin[i];
+		ch += bin[i + 1];
+		ch += bin[i + 2];
+		ch += bin[i + 3];
+		hex += mp[ch];
+	}
+	return hex;
+}
