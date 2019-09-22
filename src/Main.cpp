@@ -128,84 +128,70 @@ const int PC_2[48] = { 14, 17, 11, 24,  1,  5,
 					   46, 42, 50, 36, 29, 32
 };
 
-//use std namespace from c++ stl
 using namespace std;
 
-//Function Declarations
+//**********************************************************************
+//Function Prototypes Start
 string hex_to_bin(const string& hex);
 
 string bin_to_hex(const string& bin);
 
+string apply_PC1(const string& key);
+
+string* generate_subkeys(const string& key);
+//Function Prototypes End
+//**********************************************************************
+
 int main() {
-	cout << "DES Encryption Program Test" << std::endl;
-	string hex_key = "14ACE";
-	string bin_key = "0";
-	string hex_key_ = "";
-	string bin_key_ = "";
+	cout << "DES Encryption Program Test" << endl;
+	string plain_text = "0123456789ABCDEF";
+	string hex_key = "133457799BBCDFF1";
+	string bin_key = "";
+	string bin_key_56 = "";
 	cout << "hex_key of length " << hex_key.length() << " : " << hex_key << endl;
 	bin_key = hex_to_bin(hex_key);
 	cout << "bin_key of length " << bin_key.length() << " : " << bin_key << endl;
+	bin_key_56 = apply_PC1(bin_key);
+	cout << "bin_key of length " << bin_key_56.length() << " after applying PC_1 : " << bin_key_56 << endl;
+
+	string* ptr = generate_subkeys(bin_key_56);
+	//for (int i = 0; i < 16; i++)
+		//cout << "Subkey #" << i << " of length " << ptr[i].length() << " : " << ptr[i] << endl;
+
+
 	system("PAUSE");
 	return 0;
 }
 
+//**********************************************************************
+//Name: hex_to_bin
+//Params
+//Purpose: Converts a 16-bit hexadecimal number into a 64-bit binary 
+//number
+//Returns: string
+//**********************************************************************
 string hex_to_bin(const string& hex) {
 	assert(hex.length() <= 16);
 	string bin = "";
-	string bin_with_zeros_in_front = "";
-	for (unsigned int i = 0; i < hex.length(); i++) {
-		switch (hex[i]) {
-		case '0':
-			bin.append("0000");
-			break;
-		case '1':
-			bin.append("0001");
-			break;
-		case '2': 
-			bin.append("0010");
-			break;
-		case '3':
-			bin.append("0011");
-			break;
-		case '4':
-			bin.append("0100");
-			break;
-		case '5':
-			bin.append("0101");
-			break;
-		case '6':
-			bin.append("0110");
-			break;
-		case '7':
-			bin.append("0111");
-			break;
-		case '8':
-			bin.append("1000");
-			break;
-		case '9':
-			bin.append("1001");
-			break;
-		case 'A':
-			bin.append("1010");
-			break;
-		case 'B':
-			bin.append("1011");
-			break;
-		case 'C':
-			bin.append("1100");
-			break;
-		case 'D':
-			bin.append("1101");
-			break;
-		case 'E':
-			bin.append("1110");
-			break;
-		case 'F':
-			bin.append("1111");
-			break;
-		default:
-			break;
-		}
+	unordered_map<char, string> mp;
+	mp['0'] = "0000";
+	mp['1'] = "0001";
+	mp['2'] = "0010";
+	mp['3'] = "0011";
+	mp['4'] = "0100";
+	mp['5'] = "0101";
+	mp['6'] = "0110";
+	mp['7'] = "0111";
+	mp['8'] = "1000";
+	mp['9'] = "1001";
+	mp['A'] = "1010";
+	mp['B'] = "1011";
+	mp['C'] = "1100";
+	mp['D'] = "1101";
+	mp['E'] = "1110";
+	mp['F'] = "1111";
+	for (unsigned int i = 0; i < hex.size(); i++) {
+		bin += mp[hex[i]];
 	}
 	int zeros_to_prepend = 64 - bin.length();
 	for (int i = 0; i < zeros_to_prepend; i++) {
@@ -214,6 +200,12 @@ string hex_to_bin(const string& hex) {
 	return bin;
 }
 
+//**********************************************************************
+//Name: bin_to_hex
+//Purpose: converts a 64-bit binary number to a 16-bit hexadecimal
+//number
+//Returns: string
+//**********************************************************************
 string bin_to_hex(const string& bin) {
 	assert(bin.length() == 64);
 	string hex = "";
@@ -234,7 +226,7 @@ string bin_to_hex(const string& bin) {
 	mp["1101"] = "D";
 	mp["1110"] = "E";
 	mp["1111"] = "F";
-	for (int i = 0; i < bin.length(); i += 4) {
+	for (unsigned int i = 0; i < bin.length(); i += 4) {
 		string ch = "";
 		ch += bin[i];
 		ch += bin[i + 1];
@@ -243,4 +235,60 @@ string bin_to_hex(const string& bin) {
 		hex += mp[ch];
 	}
 	return hex;
+}
+
+//**********************************************************************
+//Name: apply_PC1
+//Purpose: applies Permuted Choice One to the original 64-bit key
+//which turns it into a 56-bit key
+//returns: string
+//**********************************************************************
+string apply_PC1(const string& key) {
+	string new_key = "";
+	for (int i = 0; i < 56; i++) {
+		new_key += key[PC_1[i]];
+	}
+	return new_key;
+}
+
+//**********************************************************************
+
+//**********************************************************************
+string* generate_subkeys(const string& key) {
+	static string subkeys[16];
+	for (int i = 0; i < 16; i++) {
+		//split 56-bit string into two equal 28-bit parts
+		string left = key.substr(0, 28);
+		string right = key.substr(28, 28);
+		//apply shifts on left and right
+		string newLeft = "";
+		string newRight = "";
+		if (shift_table[i] == 1) {
+			newLeft = left.substr(27, 1) + left.substr(0, 27);
+			newRight = right.substr(27, 1) + right.substr(0, 27);
+		}
+		else {
+			newLeft = left.substr(26, 2) + left.substr(0, 26);
+			newRight = right.substr(26, 2) + right.substr(0, 26);
+		}
+		cout << "----------------------------------------------------------------------" << endl
+			<< "Round " << i + 1 << " Key Generation " << endl;
+		cout << "Left before shifts : " << left << endl;
+		cout << "Right before shifts : " << right << endl;
+
+		cout << "Left after shifts : " << newLeft << endl;
+		cout << "Right after shifts : " << newRight << endl;
+		//concatenate left and right
+		string temp_key = newLeft + newRight;
+		cout << "before pc_2 : " << temp_key << endl;
+		//apply permuted choice 2
+		string new_key = "";
+		for (int j = 0; j < 48; j++) {
+			new_key += temp_key[PC_2[j]];
+		}
+		cout << "after pc_2 : " << new_key << endl;
+		subkeys[i] = new_key;
+		cout << "----------------------------------------------------------------------" << endl;
+	}
+	return subkeys;
 }
