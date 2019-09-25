@@ -246,7 +246,7 @@ string bin_to_hex(const string& bin) {
 string apply_PC1(const string& key) {
 	string new_key = "";
 	for (int i = 0; i < 56; i++) {
-		new_key += key[PC_1[i]];
+		new_key += key[PC_1[i] - 1]; //-1 for indexing
 	}
 	return new_key;
 }
@@ -264,12 +264,12 @@ string* generate_subkeys(const string& key) {
 		string newLeft = "";
 		string newRight = "";
 		if (shift_table[i] == 1) {
-			newLeft = left.substr(27, 1) + left.substr(0, 27);
-			newRight = right.substr(27, 1) + right.substr(0, 27);
+			newLeft = left.substr(1, 27) + left.substr(0, 1);
+			newRight = right.substr(1, 27) + right.substr(0, 1);
 		}
 		else {
-			newLeft = left.substr(26, 2) + left.substr(0, 26);
-			newRight = right.substr(26, 2) + right.substr(0, 26);
+			newLeft = left.substr(2, 26) + left.substr(0, 2);
+			newRight = right.substr(2, 26) + right.substr(0, 2);
 		}
 		cout << "----------------------------------------------------------------------" << endl
 			<< "Round " << i + 1 << " Key Generation " << endl;
@@ -284,7 +284,7 @@ string* generate_subkeys(const string& key) {
 		//apply permuted choice 2
 		string new_key = "";
 		for (int j = 0; j < 48; j++) {
-			new_key += temp_key[PC_2[j]];
+			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
 		}
 		cout << "after pc_2 : " << new_key << endl;
 		subkeys[i] = new_key;
