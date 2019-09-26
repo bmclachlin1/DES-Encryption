@@ -36,13 +36,14 @@ const int IIP[64] = { 40, 8, 48, 16, 56, 24, 64, 32,
 					  33, 1, 41,  9, 49, 17, 57, 25 };
 
 //Expansion Permutation (E)
-const int EP[42] = { 32,  1,  2,  3,  4,  5,
+const int EP[48] = { 32,  1,  2,  3,  4,  5,
 					  4,  5,  6,  7,  8,  9,
 					  8,  9, 10, 11, 12, 13,
+					 12, 13, 14, 15, 16, 17,
 					 16, 17, 18, 19, 20, 21,
 					 20, 21, 22, 23, 24, 25,
 					 24, 25, 26, 27, 28, 29,
-					 28, 29, 39, 12, 32,  1 };
+					 28, 29, 30, 31, 32,  1 };
 
 //Permutation Function (P)
 const int P[32] = { 16, 7, 20, 21, 29, 12, 28, 17,
@@ -133,15 +134,21 @@ using namespace std;
 
 //**********************************************************************
 //Function Prototypes Start
+//**********************************************************************
 string hex_to_bin(const string& hex);
 
 string bin_to_hex(const string& bin);
 
+string XOR(const string& s1, const string& s2);
+
 string apply_IP(const string& plaintext);
+
+string apply_EP(const string& right);
 
 string apply_PC1(const string& key);
 
 vector<string> generate_subkeys(const string& key);
+//**********************************************************************
 //Function Prototypes End
 //**********************************************************************
 
@@ -153,17 +160,19 @@ int main() {
 	string key_bin = hex_to_bin(key_hex);
 	string bin_key_56 = apply_PC1(key_bin);
 	string IP = apply_IP(plaintext_bin);
-
-	cout << "Plain text : " << plaintext_hex << endl;
-	cout << "Plain text : " << plaintext_bin << endl;
-	cout << "Plain text after applying IP : " << IP << endl;
-	cout << "key : " << key_hex << endl;
-	cout << "key : " << key_bin << endl;
-	cout << "key after applying PC_1 : " << bin_key_56 << endl << endl;
-
+	string left = IP.substr(0, 32);
+	string right = IP.substr(32, 32);
+	string new_right = apply_EP(right);
+	
+	//generate 16 subkeys k1, k2, ... , k16
 	vector<string> subkeys = generate_subkeys(bin_key_56);
 	for (int i = 0; i < 16; i++)
-		cout << "Subkey #" << i+1 << " : " << subkeys[i] << endl << endl;
+		cout << "Subkey #" << i + 1 << " : " << subkeys[i] << endl << endl;
+
+	cout << "Plain text after applying IP : " << IP << endl;
+	cout << "Left : " << left << endl;
+	cout << "Right : " << right << endl;
+	cout << "New Right : " << new_right << endl;
 
 	system("PAUSE");
 }
@@ -242,6 +251,24 @@ string bin_to_hex(const string& bin) {
 }
 
 //**********************************************************************
+//Name: XOR
+//Purpose: takes two binary strings and does XOR on each individual bit
+//in the string
+//returns: string
+//**********************************************************************
+string XOR(const string& s1, const string& s2) {
+	assert(s1.length() == s2.length());
+	string new_string = "";
+	for (unsigned int i = 0; i < s1.length(); i++) {
+		if (s1[i] == s2[i])
+			new_string += "0";
+		else
+			new_string += "1";			   
+	}
+	return new_string;
+}
+
+//**********************************************************************
 //Name: apply_IP
 //Purpose: appliss initial permutation (IP) to the plaintext input
 //returns: string
@@ -254,6 +281,13 @@ string apply_IP(const string& plaintext) {
 	return new_text;
 }
 
+string apply_EP(const string& right) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 48; i++) {
+		new_text += right[EP[i] - 1];
+	}
+	return new_text;
+}
 
 //**********************************************************************
 //Name: apply_PC1
@@ -303,7 +337,7 @@ vector<string> generate_subkeys(const string& key) {
 		//concatenate left and right
 		temp_key = newLeft + newRight;
 		//apply permuted choice 2
-		new_key = ""; //reset from last round
+		new_key = ""; //reset from last round of subkey generation
 		for (int j = 0; j < 48; j++) {
 			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
 		}
