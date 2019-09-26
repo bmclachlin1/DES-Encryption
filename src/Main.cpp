@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cassert>
 #include <unordered_map>
+#include <vector>
 
 //const variable declarations
 
@@ -136,36 +137,39 @@ string hex_to_bin(const string& hex);
 
 string bin_to_hex(const string& bin);
 
+string apply_IP(const string& plaintext);
+
 string apply_PC1(const string& key);
 
-string* generate_subkeys(const string& key);
+vector<string> generate_subkeys(const string& key);
 //Function Prototypes End
 //**********************************************************************
 
 int main() {
 	cout << "DES Encryption Program Test" << endl;
-	string plain_text = "0123456789ABCDEF";
-	string hex_key = "133457799BBCDFF1";
-	string bin_key = "";
-	string bin_key_56 = "";
-	cout << "hex_key of length " << hex_key.length() << " : " << hex_key << endl;
-	bin_key = hex_to_bin(hex_key);
-	cout << "bin_key of length " << bin_key.length() << " : " << bin_key << endl;
-	bin_key_56 = apply_PC1(bin_key);
-	cout << "bin_key of length " << bin_key_56.length() << " after applying PC_1 : " << bin_key_56 << endl << endl;
+	string plaintext_hex = "0123456789ABCDEF";
+	string plaintext_bin = hex_to_bin(plaintext_hex);
+	string key_hex = "133457799BBCDFF1";
+	string key_bin = hex_to_bin(key_hex);
+	string bin_key_56 = apply_PC1(key_bin);
+	string IP = apply_IP(plaintext_bin);
 
-	string* subkeys = generate_subkeys(bin_key_56);
+	cout << "Plain text : " << plaintext_hex << endl;
+	cout << "Plain text : " << plaintext_bin << endl;
+	cout << "Plain text after applying IP : " << IP << endl;
+	cout << "key : " << key_hex << endl;
+	cout << "key : " << key_bin << endl;
+	cout << "key after applying PC_1 : " << bin_key_56 << endl << endl;
+
+	vector<string> subkeys = generate_subkeys(bin_key_56);
 	for (int i = 0; i < 16; i++)
 		cout << "Subkey #" << i+1 << " : " << subkeys[i] << endl << endl;
 
-
 	system("PAUSE");
-	return 0;
 }
 
 //**********************************************************************
 //Name: hex_to_bin
-//Params
 //Purpose: Converts a 16-bit hexadecimal number into a 64-bit binary 
 //number
 //Returns: string
@@ -238,6 +242,20 @@ string bin_to_hex(const string& bin) {
 }
 
 //**********************************************************************
+//Name: apply_IP
+//Purpose: appliss initial permutation (IP) to the plaintext input
+//returns: string
+//**********************************************************************
+string apply_IP(const string& plaintext) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 64; i++) {
+		new_text += plaintext[IP[i] - 1];
+	}
+	return new_text;
+}
+
+
+//**********************************************************************
 //Name: apply_PC1
 //Purpose: applies Permuted Choice One to the original 64-bit key
 //which turns it into a 56-bit key
@@ -245,7 +263,7 @@ string bin_to_hex(const string& bin) {
 //**********************************************************************
 string apply_PC1(const string& key) {
 	string new_key = "";
-	for (int i = 0; i < 56; i++) {
+	for (unsigned int i = 0; i < 56; i++) {
 		new_key += key[PC_1[i] - 1]; //-1 for indexing
 	}
 	return new_key;
@@ -257,11 +275,11 @@ string apply_PC1(const string& key) {
 //algorithm
 //Returns: string pointer (array of strings) 
 //**********************************************************************
-string* generate_subkeys(const string& key) {
-	static string subkeys[16];
+vector<string> generate_subkeys(const string& key) {
+	vector<string> subkeys;
 	//variable declarations
 	string left, right, newLeft, newRight, temp_key, new_key = "";
-	for (int i = 0; i < 16; i++) {
+	for (unsigned int i = 0; i < 16; i++) {
 		//split 56-bit string into two equal 28-bit parts
 		if (i == 0) {
 			//for the first round, you use the parameter passed to the function
@@ -289,7 +307,7 @@ string* generate_subkeys(const string& key) {
 		for (int j = 0; j < 48; j++) {
 			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
 		}
-		subkeys[i] = new_key;
+		subkeys.push_back(new_key);
 	}
 	return subkeys;
 }
