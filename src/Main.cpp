@@ -152,11 +152,11 @@ int main() {
 	bin_key = hex_to_bin(hex_key);
 	cout << "bin_key of length " << bin_key.length() << " : " << bin_key << endl;
 	bin_key_56 = apply_PC1(bin_key);
-	cout << "bin_key of length " << bin_key_56.length() << " after applying PC_1 : " << bin_key_56 << endl;
+	cout << "bin_key of length " << bin_key_56.length() << " after applying PC_1 : " << bin_key_56 << endl << endl;
 
-	string* ptr = generate_subkeys(bin_key_56);
-	//for (int i = 0; i < 16; i++)
-		//cout << "Subkey #" << i << " of length " << ptr[i].length() << " : " << ptr[i] << endl;
+	string* subkeys = generate_subkeys(bin_key_56);
+	for (int i = 0; i < 16; i++)
+		cout << "Subkey #" << i+1 << " : " << subkeys[i] << endl << endl;
 
 
 	system("PAUSE");
@@ -252,17 +252,28 @@ string apply_PC1(const string& key) {
 }
 
 //**********************************************************************
-
+//Name: generate_subkeys
+//Purpose: generates all 16 subkeys used for the DES encryption 
+//algorithm
+//Returns: string pointer (array of strings) 
 //**********************************************************************
 string* generate_subkeys(const string& key) {
 	static string subkeys[16];
+	//variable declarations
+	string left, right, newLeft, newRight, temp_key, new_key = "";
 	for (int i = 0; i < 16; i++) {
 		//split 56-bit string into two equal 28-bit parts
-		string left = key.substr(0, 28);
-		string right = key.substr(28, 28);
-		//apply shifts on left and right
-		string newLeft = "";
-		string newRight = "";
+		if (i == 0) {
+			//for the first round, you use the parameter passed to the function
+			left = key.substr(0, 28);
+			right = key.substr(28, 28);
+		}
+		else {
+			//for all other rounds, you use the key from the left shifts but before applying PC_2
+			left = temp_key.substr(0, 28);
+			right = temp_key.substr(28, 28);
+		}
+		//apply left shifts on left and right halves
 		if (shift_table[i] == 1) {
 			newLeft = left.substr(1, 27) + left.substr(0, 1);
 			newRight = right.substr(1, 27) + right.substr(0, 1);
@@ -271,24 +282,14 @@ string* generate_subkeys(const string& key) {
 			newLeft = left.substr(2, 26) + left.substr(0, 2);
 			newRight = right.substr(2, 26) + right.substr(0, 2);
 		}
-		cout << "----------------------------------------------------------------------" << endl
-			<< "Round " << i + 1 << " Key Generation " << endl;
-		cout << "Left before shifts : " << left << endl;
-		cout << "Right before shifts : " << right << endl;
-
-		cout << "Left after shifts : " << newLeft << endl;
-		cout << "Right after shifts : " << newRight << endl;
 		//concatenate left and right
-		string temp_key = newLeft + newRight;
-		cout << "before pc_2 : " << temp_key << endl;
+		temp_key = newLeft + newRight;
 		//apply permuted choice 2
-		string new_key = "";
+		new_key = ""; //reset from last round
 		for (int j = 0; j < 48; j++) {
 			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
 		}
-		cout << "after pc_2 : " << new_key << endl;
 		subkeys[i] = new_key;
-		cout << "----------------------------------------------------------------------" << endl;
 	}
 	return subkeys;
 }
