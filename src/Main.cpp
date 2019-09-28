@@ -139,7 +139,15 @@ string hex_to_bin(const string& hex);
 
 string bin_to_hex(const string& bin);
 
+string bin_to_dec(const string& bin);
+
+string dec_to_bin(const string& dec);
+
 string XOR(const string& s1, const string& s2);
+
+string apply_s_box(const string& bit_stream);
+
+string apply_P(const string& bit_stream);
 
 string apply_IP(const string& plaintext);
 
@@ -163,17 +171,13 @@ int main() {
 	string left = IP.substr(0, 32);
 	string right = IP.substr(32, 32);
 	string new_right = apply_EP(right);
-	
-	//generate 16 subkeys k1, k2, ... , k16
-	vector<string> subkeys = generate_subkeys(bin_key_56);
-	for (int i = 0; i < 16; i++)
-		cout << "Subkey #" << i + 1 << " : " << subkeys[i] << endl << endl;
 
-	cout << "Plain text after applying IP : " << IP << endl;
-	cout << "Left : " << left << endl;
-	cout << "Right : " << right << endl;
-	cout << "New Right : " << new_right << endl;
-
+	string test = "01011100100000101011010110010111";
+	string res = apply_P(test);
+	for (unsigned int i = 0; i < res.length(); i += 4) {
+		cout << res.substr(i, 4) << " ";
+	}
+	cout << endl;
 	system("PAUSE");
 }
 
@@ -207,7 +211,7 @@ string hex_to_bin(const string& hex) {
 		bin += mp[hex[i]];
 	}
 	int zeros_to_prepend = 64 - bin.length();
-	for (int i = 0; i < zeros_to_prepend; i++) {
+	for (unsigned int i = 0; i < zeros_to_prepend; i++) {
 		bin.insert(0, "0");
 	}
 	return bin;
@@ -251,6 +255,68 @@ string bin_to_hex(const string& bin) {
 }
 
 //**********************************************************************
+//Name: bin_to_dec
+//Purpose: converts a binary number to a decimal number
+//Returns: string
+//**********************************************************************
+string bin_to_dec(const string& bin) {
+	string dec = "";
+	unordered_map<string, string> mp;
+	//for outer bits 1 & 6 (row bits)
+	mp["00"] = "0";
+	mp["01"] = "1";
+	mp["10"] = "2";
+	mp["11"] = "3";
+	//for inner bits 2-5 (col bits)
+	mp["0000"] = "0";
+	mp["0001"] = "1";
+	mp["0010"] = "2";
+	mp["0011"] = "3";
+	mp["0100"] = "4";
+	mp["0101"] = "5";
+	mp["0110"] = "6";
+	mp["0111"] = "7";
+	mp["1000"] = "8";
+	mp["1001"] = "9";
+	mp["1010"] = "10";
+	mp["1011"] = "11";
+	mp["1100"] = "12";
+	mp["1101"] = "13";
+	mp["1110"] = "14";
+	mp["1111"] = "15";
+	dec = mp[bin];
+	return dec;
+}
+
+//**********************************************************************
+//Name: dec_to_bin
+//Purpose: converts a decimal number to a binary number
+//Returns: string
+//**********************************************************************
+string dec_to_bin(const string& dec) {
+	string bin = "";
+	unordered_map<string, string> mp;
+	mp["0"] = "0000";
+	mp["1"] = "0001";
+	mp["2"] = "0010";
+	mp["3"] = "0011";
+	mp["4"] = "0100";
+	mp["5"] = "0101";
+	mp["6"] = "0110";
+	mp["7"] = "0111";
+	mp["8"] = "1000";
+	mp["9"] = "1001";
+	mp["10"] = "1010";
+	mp["11"] = "1011";
+	mp["12"] = "1100";
+	mp["13"] = "1101";
+	mp["14"] = "1110";
+	mp["15"] = "1111";
+	bin = mp[dec];
+	return bin;
+}
+
+//**********************************************************************
 //Name: XOR
 //Purpose: takes two binary strings and does XOR on each individual bit
 //in the string
@@ -269,8 +335,47 @@ string XOR(const string& s1, const string& s2) {
 }
 
 //**********************************************************************
+//Name: apply_s_box
+//Purpose: takes a 48 length bit stream and maps it to 32 bits using 
+//s-boxes
+//returns: string
+//**********************************************************************
+string apply_s_box(const string& bit_stream) {
+	assert(bit_stream.length() == 48);
+	string new_text, text_segment, row_val, left, right, col_val = "";
+	int select_box, selected_val, row_val_dec, col_val_dec = 0;
+	for (unsigned int i = 0; i < 48; i += 6) {
+		left = bit_stream.substr(i, 1);
+		right = bit_stream.substr(i + 5, 1);
+		row_val = left + right;
+		row_val_dec = stoi(bin_to_dec(row_val));
+		col_val = bit_stream.substr(i + 1, 4);
+		col_val_dec = stoi(bin_to_dec(col_val));
+		select_box = i / 6; 
+		selected_val = s_box[select_box][row_val_dec][col_val_dec];
+		text_segment = dec_to_bin(to_string(selected_val));
+		new_text += text_segment;
+	}
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_P
+//Purpose: applies Permutation function (P) to the 32-bit result from 
+//the S-box and gives back a 32-bit string
+//returns: string
+//**********************************************************************
+string apply_P(const string& bit_stream) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 32; i++)
+		new_text += bit_stream[P[i] - 1];
+	return new_text;
+}
+
+
+//**********************************************************************
 //Name: apply_IP
-//Purpose: appliss initial permutation (IP) to the plaintext input
+//Purpose: applies initial permutation (IP) to the plaintext input
 //returns: string
 //**********************************************************************
 string apply_IP(const string& plaintext) {
