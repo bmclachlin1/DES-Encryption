@@ -158,9 +158,13 @@ string apply_EP(const string& right);
 
 string apply_PC1(const string& key);
 
-string encrypt();
+void perform_DES();
 
 string round_function(const string& left32, const string& right32, const vector<string>& subkeys);
+
+string read_data(const string& fileName);
+
+void write_data(const string& fileName, const string& data);
 
 vector<string> generate_subkeys(const string& key);
 //**********************************************************************
@@ -168,10 +172,225 @@ vector<string> generate_subkeys(const string& key);
 //**********************************************************************
 
 int main() {
-	string encrypted = encrypt();
-	string hexadecimal = bin_to_hex(encrypted);
-	cout << hexadecimal << endl;
-	system("PAUSE");
+	perform_DES();
+	cout << "enter anything to exit prog" << endl;
+	system("pause");
+}
+
+//**********************************************************************
+//Name: apply_s_box
+//Purpose: takes a 48 length bit stream and maps it to 32 bits using 
+//s-boxes
+//returns: string
+//**********************************************************************
+string apply_s_box(const string& bit_stream) {
+	assert(bit_stream.length() == 48);
+	string new_text, text_segment, row_val, left, right, col_val = "";
+	int select_box, selected_val, row_val_dec, col_val_dec = 0;
+	for (unsigned int i = 0; i < 48; i += 6) {
+		left = bit_stream.substr(i, 1);
+		right = bit_stream.substr(i + 5, 1);
+		row_val = left + right;
+		row_val_dec = stoi(bin_to_dec(row_val));
+		col_val = bit_stream.substr(i + 1, 4);
+		col_val_dec = stoi(bin_to_dec(col_val));
+		select_box = i / 6; 
+		selected_val = s_box[select_box][row_val_dec][col_val_dec];
+		text_segment = dec_to_bin(to_string(selected_val));
+		new_text += text_segment;
+	}
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_P
+//Purpose: applies Permutation function (P) to the 32-bit result from 
+//the S-box and gives back a 32-bit string
+//returns: string
+//**********************************************************************
+string apply_P(const string& bit_stream) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 32; i++)
+		new_text += bit_stream[P[i] - 1];
+	return new_text;
+}
+
+
+//**********************************************************************
+//Name: apply_IP
+//Purpose: applies initial permutation (IP) to the plaintext input
+//returns: string
+//**********************************************************************
+string apply_IP(const string& plaintext) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 64; i++) {
+		new_text += plaintext[IP[i] - 1];
+	}
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_IIP
+//Purpose: applies inverse initial permutation (IIP) to the bit stream
+//returns: string
+//**********************************************************************
+string apply_IIP(const string& bit_stream) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 64; i++)
+		new_text += bit_stream[IIP[i] - 1];
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_EP
+//Purpose: applies expansion permutation to right side input of round
+//function
+//returns: string
+//**********************************************************************
+string apply_EP(const string& right) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 48; i++) {
+		new_text += right[EP[i] - 1];
+	}
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_PC1
+//Purpose: applies Permuted Choice One to the original 64-bit key
+//which turns it into a 56-bit key
+//returns: string
+//**********************************************************************
+string apply_PC1(const string& key) {
+	string new_key = "";
+	for (unsigned int i = 0; i < 56; i++) {
+		new_key += key[PC_1[i] - 1]; 
+	}
+	return new_key;
+}
+
+//**********************************************************************
+//Name: generate_subkeys
+//Purpose: generates all 16 subkeys used for the DES encryption 
+//algorithm
+//Returns: string pointer (array of strings) 
+//**********************************************************************
+vector<string> generate_subkeys(const string& key) {
+	vector<string> subkeys;
+	//variable declarations
+	string left, right, newLeft, newRight, temp_key, new_key = "";
+	for (unsigned int i = 0; i < 16; i++) {
+		//split 56-bit string into two equal 28-bit parts
+		if (i == 0) {
+			//for the first round, you use the parameter passed to the function
+			left = key.substr(0, 28);
+			right = key.substr(28, 28);
+		}
+		else {
+			//for all other rounds, you use the key from the left shifts but before applying PC_2
+			left = temp_key.substr(0, 28);
+			right = temp_key.substr(28, 28);
+		}
+		//apply left shifts on left and right halves
+		if (shift_table[i] == 1) {
+			newLeft = left.substr(1, 27) + left.substr(0, 1);
+			newRight = right.substr(1, 27) + right.substr(0, 1);
+		}
+		else {
+			newLeft = left.substr(2, 26) + left.substr(0, 2);
+			newRight = right.substr(2, 26) + right.substr(0, 2);
+		}
+		//concatenate left and right
+		temp_key = newLeft + newRight;
+		//apply permuted choice 2
+		new_key = ""; //reset from last round of subkey generation
+		for (int j = 0; j < 48; j++) {
+			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
+		}
+		subkeys.push_back(new_key);
+	}
+	return subkeys;
+}
+
+//**********************************************************************
+//Name: perform_DES
+//Purpose: Performs DES encryption/decryption algorithm
+//returns: string
+//**********************************************************************
+void perform_DES() {
+	string round_result, encrypted, left, right, plaintext_hex, plaintext_bin, key_hex, key_bin, fileName = "";
+	string choice;
+	vector<string> subkeys;
+	cout << "Enter E for encryption and D for decryption: ";
+	getline(cin, choice);
+	cout << "Input the key in hexadecimal form: ";
+	getline(cin, key_hex);
+	cout << "Input the file name to encrypt (e.g. data.txt): ";
+	getline(cin, fileName);
+	plaintext_hex = read_data(fileName);
+	plaintext_bin = hex_to_bin(plaintext_hex);
+	plaintext_bin = apply_IP(plaintext_bin);
+	left = plaintext_bin.substr(0, 32);
+	right = plaintext_bin.substr(32, 32);
+	key_bin = hex_to_bin(key_hex);
+	key_bin = apply_PC1(key_bin);
+	subkeys = generate_subkeys(key_bin);
+	if (choice == "D")
+		reverse(subkeys.begin(), subkeys.end());
+	round_result = round_function(left, right, subkeys);
+	left = round_result.substr(32, 32);
+	right = round_result.substr(0, 32);
+	encrypted = left + right;
+	encrypted = apply_IIP(encrypted);
+	encrypted = bin_to_hex(encrypted);
+	write_data(fileName, encrypted);
+}
+
+string read_data(const string& fileName) {
+	ifstream fileIn;
+	string text = "";
+	fileIn.open("./src/" + fileName);
+	if (!fileIn.is_open()) {
+		cerr << "Invalid file name. Closing the program..." << endl;
+		exit(0);
+	}
+	getline(fileIn, text);
+	return text;
+}
+
+void write_data(const string& fileName, const string& data) {
+	ofstream fileOut;
+	string text = data;
+	fileOut.open("./src/" + fileName);
+	if (!fileOut.is_open()) {
+		cerr << "Invalid file namee. Closing the program..." << endl;
+		exit(0);
+	}
+	fileOut << data;
+}
+
+//**********************************************************************
+//Name: round_function
+//Purpose: Performs 16 rounds of the round function for DES
+//returns: string
+//**********************************************************************
+string round_function(const string& left32, const string& right32, const vector<string>& subkeys) {
+	string EP, EP_XOR_K, s_box, permute, left, previousLeft, right, encrypted = "";
+	for (unsigned int i = 0; i < subkeys.size(); i++) {
+		if (i == 0) {
+			left = left32;
+			right = right32;
+		}
+		EP = apply_EP(right);
+		EP_XOR_K = XOR(EP, subkeys[i]);
+		s_box = apply_s_box(EP_XOR_K);
+		permute = apply_P(s_box);
+		previousLeft = left;
+		left = right;
+		right = XOR(previousLeft, permute);
+	}
+	encrypted = left + right;
+	return encrypted;
 }
 
 //**********************************************************************
@@ -204,7 +423,7 @@ string hex_to_bin(const string& hex) {
 		bin += mp[hex[i]];
 	}
 	int zeros_to_prepend = 64 - bin.length();
-	for (unsigned int i = 0; i < zeros_to_prepend; i++) {
+	for (int i = 0; i < zeros_to_prepend; i++) {
 		bin.insert(0, "0");
 	}
 	return bin;
@@ -322,204 +541,7 @@ string XOR(const string& s1, const string& s2) {
 		if (s1[i] == s2[i])
 			new_string += "0";
 		else
-			new_string += "1";			   
+			new_string += "1";
 	}
 	return new_string;
-}
-
-//**********************************************************************
-//Name: apply_s_box
-//Purpose: takes a 48 length bit stream and maps it to 32 bits using 
-//s-boxes
-//returns: string
-//**********************************************************************
-string apply_s_box(const string& bit_stream) {
-	assert(bit_stream.length() == 48);
-	string new_text, text_segment, row_val, left, right, col_val = "";
-	int select_box, selected_val, row_val_dec, col_val_dec = 0;
-	for (unsigned int i = 0; i < 48; i += 6) {
-		left = bit_stream.substr(i, 1);
-		right = bit_stream.substr(i + 5, 1);
-		row_val = left + right;
-		row_val_dec = stoi(bin_to_dec(row_val));
-		col_val = bit_stream.substr(i + 1, 4);
-		col_val_dec = stoi(bin_to_dec(col_val));
-		select_box = i / 6; 
-		selected_val = s_box[select_box][row_val_dec][col_val_dec];
-		text_segment = dec_to_bin(to_string(selected_val));
-		new_text += text_segment;
-	}
-	return new_text;
-}
-
-//**********************************************************************
-//Name: apply_P
-//Purpose: applies Permutation function (P) to the 32-bit result from 
-//the S-box and gives back a 32-bit string
-//returns: string
-//**********************************************************************
-string apply_P(const string& bit_stream) {
-	string new_text = "";
-	for (unsigned int i = 0; i < 32; i++)
-		new_text += bit_stream[P[i] - 1];
-	return new_text;
-}
-
-
-//**********************************************************************
-//Name: apply_IP
-//Purpose: applies initial permutation (IP) to the plaintext input
-//returns: string
-//**********************************************************************
-string apply_IP(const string& plaintext) {
-	string new_text = "";
-	for (unsigned int i = 0; i < 64; i++) {
-		new_text += plaintext[IP[i] - 1];
-	}
-	return new_text;
-}
-
-//**********************************************************************
-//Name: apply_IIP
-//Purpose: applies inverse initial permutation (IIP) to the bit stream
-//returns: string
-//**********************************************************************
-string apply_IIP(const string& bit_stream) {
-	string new_text = "";
-	for (unsigned int i = 0; i < 64; i++)
-		new_text += bit_stream[IIP[i] - 1];
-	return new_text;
-}
-
-//**********************************************************************
-//Name: apply_EP
-//Purpose: applies expansion permutation to right side input of round
-//function
-//returns: string
-//**********************************************************************
-string apply_EP(const string& right) {
-	string new_text = "";
-	for (unsigned int i = 0; i < 48; i++) {
-		new_text += right[EP[i] - 1];
-	}
-	return new_text;
-}
-
-//**********************************************************************
-//Name: apply_PC1
-//Purpose: applies Permuted Choice One to the original 64-bit key
-//which turns it into a 56-bit key
-//returns: string
-//**********************************************************************
-string apply_PC1(const string& key) {
-	string new_key = "";
-	for (unsigned int i = 0; i < 56; i++) {
-		new_key += key[PC_1[i] - 1]; //-1 for indexing
-	}
-	return new_key;
-}
-
-//**********************************************************************
-//Name: generate_subkeys
-//Purpose: generates all 16 subkeys used for the DES encryption 
-//algorithm
-//Returns: string pointer (array of strings) 
-//**********************************************************************
-vector<string> generate_subkeys(const string& key) {
-	vector<string> subkeys;
-	//variable declarations
-	string left, right, newLeft, newRight, temp_key, new_key = "";
-	for (unsigned int i = 0; i < 16; i++) {
-		//split 56-bit string into two equal 28-bit parts
-		if (i == 0) {
-			//for the first round, you use the parameter passed to the function
-			left = key.substr(0, 28);
-			right = key.substr(28, 28);
-		}
-		else {
-			//for all other rounds, you use the key from the left shifts but before applying PC_2
-			left = temp_key.substr(0, 28);
-			right = temp_key.substr(28, 28);
-		}
-		//apply left shifts on left and right halves
-		if (shift_table[i] == 1) {
-			newLeft = left.substr(1, 27) + left.substr(0, 1);
-			newRight = right.substr(1, 27) + right.substr(0, 1);
-		}
-		else {
-			newLeft = left.substr(2, 26) + left.substr(0, 2);
-			newRight = right.substr(2, 26) + right.substr(0, 2);
-		}
-		//concatenate left and right
-		temp_key = newLeft + newRight;
-		//apply permuted choice 2
-		new_key = ""; //reset from last round of subkey generation
-		for (int j = 0; j < 48; j++) {
-			new_key += temp_key[PC_2[j] - 1]; //-1 for indexing
-		}
-		subkeys.push_back(new_key);
-	}
-	return subkeys;
-}
-
-//**********************************************************************
-//Name: encrypt
-//Purpose: Performs DES encryption algorithm
-//returns: string
-//**********************************************************************
-string encrypt() {
-	//read plaintext and key from user input or file
-	//generate subkeys
-	//do initial peremutation on plaintext
-	//split plaintext into left32 bits and right32 bits
-	string round_result, encrypted, left, right = "";
-	string plaintext_hex = "0123456789ABCDEF";
-	string plaintext_bin = hex_to_bin(plaintext_hex);
-	plaintext_bin = apply_IP(plaintext_bin);
-	left = plaintext_bin.substr(0, 32);
-	right = plaintext_bin.substr(32, 32);
-	string key_hex = "133457799BBCDFF1";
-	string key_bin = hex_to_bin(key_hex);
-	key_bin = apply_PC1(key_bin);
-	vector<string> subkeys = generate_subkeys(key_bin);
-	round_result = round_function(left, right, subkeys);
-	left = round_result.substr(32, 32);
-	right = round_result.substr(0, 32);
-	encrypted = left + right;
-	encrypted = apply_IIP(encrypted);
-	return encrypted;
-}
-
-//**********************************************************************
-//Name: round_function
-//Purpose: Performs 16 rounds of the round function for DES
-//returns: string
-//**********************************************************************
-string round_function(const string& left32, const string& right32, const vector<string>& subkeys) {
-	string EP, EP_XOR_K, s_box, permute, left, previousLeft, right, encrypted = "";
-	for (int i = 0; i < subkeys.size(); i++) {
-		if (i == 0) {
-			left = left32;
-			right = right32;
-		}
-		cout << "-------------------------------------------------------" << endl;
-		cout << "Round " << i + 1 << endl;
-		cout << "Left: " << left << endl << "Right: " << right << endl << "Key: " << subkeys[i] << endl;
-		EP = apply_EP(right);
-		cout << "EP: " << EP << endl;
-		EP_XOR_K = XOR(EP, subkeys[i]);
-		cout << "EP_XOR_K: " << EP_XOR_K << endl;
-		s_box = apply_s_box(EP_XOR_K);
-		cout << "S_BOX: " << s_box << endl;
-		permute = apply_P(s_box);
-		cout << "Permute: " << permute << endl;
-		previousLeft = left;
-		left = right;
-		cout << "New left: " << left << endl;
-		right = XOR(previousLeft, permute);
-		cout << "New right: " << right << endl;
-		cout << "-------------------------------------------------------" << endl;
-	}
-	encrypted = left + right;
-	return encrypted;
 }
