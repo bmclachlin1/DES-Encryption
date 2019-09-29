@@ -7,6 +7,7 @@
 //**************************************************************
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <algorithm>
 #include <cassert>
@@ -151,9 +152,15 @@ string apply_P(const string& bit_stream);
 
 string apply_IP(const string& plaintext);
 
+string apply_IIP(const string& bit_stream);
+
 string apply_EP(const string& right);
 
 string apply_PC1(const string& key);
+
+string encrypt();
+
+string round_function(const string& left32, const string& right32, const vector<string>& subkeys);
 
 vector<string> generate_subkeys(const string& key);
 //**********************************************************************
@@ -161,23 +168,9 @@ vector<string> generate_subkeys(const string& key);
 //**********************************************************************
 
 int main() {
-	cout << "DES Encryption Program Test" << endl;
-	string plaintext_hex = "0123456789ABCDEF";
-	string plaintext_bin = hex_to_bin(plaintext_hex);
-	string key_hex = "133457799BBCDFF1";
-	string key_bin = hex_to_bin(key_hex);
-	string bin_key_56 = apply_PC1(key_bin);
-	string IP = apply_IP(plaintext_bin);
-	string left = IP.substr(0, 32);
-	string right = IP.substr(32, 32);
-	string new_right = apply_EP(right);
-
-	string test = "01011100100000101011010110010111";
-	string res = apply_P(test);
-	for (unsigned int i = 0; i < res.length(); i += 4) {
-		cout << res.substr(i, 4) << " ";
-	}
-	cout << endl;
+	string encrypted = encrypt();
+	string hexadecimal = bin_to_hex(encrypted);
+	cout << hexadecimal << endl;
 	system("PAUSE");
 }
 
@@ -386,6 +379,24 @@ string apply_IP(const string& plaintext) {
 	return new_text;
 }
 
+//**********************************************************************
+//Name: apply_IIP
+//Purpose: applies inverse initial permutation (IIP) to the bit stream
+//returns: string
+//**********************************************************************
+string apply_IIP(const string& bit_stream) {
+	string new_text = "";
+	for (unsigned int i = 0; i < 64; i++)
+		new_text += bit_stream[IIP[i] - 1];
+	return new_text;
+}
+
+//**********************************************************************
+//Name: apply_EP
+//Purpose: applies expansion permutation to right side input of round
+//function
+//returns: string
+//**********************************************************************
 string apply_EP(const string& right) {
 	string new_text = "";
 	for (unsigned int i = 0; i < 48; i++) {
@@ -449,4 +460,66 @@ vector<string> generate_subkeys(const string& key) {
 		subkeys.push_back(new_key);
 	}
 	return subkeys;
+}
+
+//**********************************************************************
+//Name: encrypt
+//Purpose: Performs DES encryption algorithm
+//returns: string
+//**********************************************************************
+string encrypt() {
+	//read plaintext and key from user input or file
+	//generate subkeys
+	//do initial peremutation on plaintext
+	//split plaintext into left32 bits and right32 bits
+	string round_result, encrypted, left, right = "";
+	string plaintext_hex = "0123456789ABCDEF";
+	string plaintext_bin = hex_to_bin(plaintext_hex);
+	plaintext_bin = apply_IP(plaintext_bin);
+	left = plaintext_bin.substr(0, 32);
+	right = plaintext_bin.substr(32, 32);
+	string key_hex = "133457799BBCDFF1";
+	string key_bin = hex_to_bin(key_hex);
+	key_bin = apply_PC1(key_bin);
+	vector<string> subkeys = generate_subkeys(key_bin);
+	round_result = round_function(left, right, subkeys);
+	left = round_result.substr(32, 32);
+	right = round_result.substr(0, 32);
+	encrypted = left + right;
+	encrypted = apply_IIP(encrypted);
+	return encrypted;
+}
+
+//**********************************************************************
+//Name: round_function
+//Purpose: Performs 16 rounds of the round function for DES
+//returns: string
+//**********************************************************************
+string round_function(const string& left32, const string& right32, const vector<string>& subkeys) {
+	string EP, EP_XOR_K, s_box, permute, left, previousLeft, right, encrypted = "";
+	for (int i = 0; i < subkeys.size(); i++) {
+		if (i == 0) {
+			left = left32;
+			right = right32;
+		}
+		cout << "-------------------------------------------------------" << endl;
+		cout << "Round " << i + 1 << endl;
+		cout << "Left: " << left << endl << "Right: " << right << endl << "Key: " << subkeys[i] << endl;
+		EP = apply_EP(right);
+		cout << "EP: " << EP << endl;
+		EP_XOR_K = XOR(EP, subkeys[i]);
+		cout << "EP_XOR_K: " << EP_XOR_K << endl;
+		s_box = apply_s_box(EP_XOR_K);
+		cout << "S_BOX: " << s_box << endl;
+		permute = apply_P(s_box);
+		cout << "Permute: " << permute << endl;
+		previousLeft = left;
+		left = right;
+		cout << "New left: " << left << endl;
+		right = XOR(previousLeft, permute);
+		cout << "New right: " << right << endl;
+		cout << "-------------------------------------------------------" << endl;
+	}
+	encrypted = left + right;
+	return encrypted;
 }
