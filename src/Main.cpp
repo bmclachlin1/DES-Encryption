@@ -173,8 +173,6 @@ vector<string> generate_subkeys(const string& key);
 
 int main() {
 	perform_DES();
-	cout << "enter anything to exit prog" << endl;
-	system("pause");
 }
 
 //**********************************************************************
@@ -349,7 +347,7 @@ void perform_DES() {
 string read_data(const string& fileName) {
 	ifstream fileIn;
 	string text = "";
-	fileIn.open("./src/" + fileName);
+	fileIn.open(fileName);
 	if (!fileIn.is_open()) {
 		cerr << "Invalid file name. Closing the program..." << endl;
 		exit(0);
@@ -361,7 +359,7 @@ string read_data(const string& fileName) {
 void write_data(const string& fileName, const string& data) {
 	ofstream fileOut;
 	string text = data;
-	fileOut.open("./src/" + fileName);
+	fileOut.open(fileName);
 	if (!fileOut.is_open()) {
 		cerr << "Invalid file namee. Closing the program..." << endl;
 		exit(0);
