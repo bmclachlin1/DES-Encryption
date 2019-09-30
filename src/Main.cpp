@@ -173,6 +173,7 @@ vector<string> generate_subkeys(const string& key);
 
 int main() {
 	perform_DES();
+	return 0;
 }
 
 //**********************************************************************
